@@ -1,0 +1,88 @@
+services:
+  haproxy:
+    image: 'ebelanja/haproxy'
+    deploy:
+      restart_policy:
+        condition: on-failure
+    ports:
+      - 5432:5432
+      - 7000:7000
+    depends_on:
+      - zoo1
+      - pg-master
+      - pg-slave1
+      - pg-slave2
+
+  zoo1:
+    image: confluentinc/cp-zookeeper:latest
+    deploy:
+      restart_policy:
+        condition: on-failure
+    hostname: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  pg-master:
+    image: 'ebelanja/postgres'
+    deploy:
+      restart_policy:
+        condition: on-failure
+    hostname: pg-master
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: '/var/lib/postgresql/data/pgdata'
+    ports:
+      - 5433:5432
+    volumes:
+      - pg_data_master:/var/lib/postgresql/data
+    command: patroni /postgres0.yaml
+    depends_on:
+      - zoo1
+
+  pg-slave1:
+    image: 'ebelanja/postgres'
+    deploy:
+      restart_policy:
+        condition: on-failure
+    hostname: pg-slave1
+    ports:
+      - 5434:5432
+    volumes:
+      - pg_data_slave1:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: '/var/lib/postgresql/data/pgdata'
+    command: patroni /postgres1.yaml
+    depends_on:
+      - zoo1
+
+  pg-slave2:
+    image: 'ebelanja/postgres'
+    deploy:
+      restart_policy:
+        condition: on-failure
+    hostname: pg-slave2
+    ports:
+      - 5435:5432
+    volumes:
+      - pg_data_slave2:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: '/var/lib/postgresql/data/pgdata'
+    command: patroni /postgres2.yaml
+    depends_on:
+      - zoo1
+
+volumes:
+  pg_data_master:
+    driver: local
+  pg_data_slave1:
+    driver: local
+  pg_data_slave2:
+    driver: local
